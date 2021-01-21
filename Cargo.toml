@@ -1,0 +1,11 @@
+[package]
+name = "structr"
+version = "0.1.0"
+authors = ["metarmask <ihvarfner@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+structr-derive = { path = "structr-derive" }
+thiserror = "1.0"
+num-traits = "0.2"
+serde_json = "1.0"

@@ -1,0 +1,80 @@
+body {
+    background: #333;
+    color: white;
+}
+
+ol {
+    padding: 0;
+    margin: 0;
+}
+
+.struct {
+    display: inline;
+}
+
+.field--expanded {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.struct__fields {
+    display: none;
+    margin-left: 0.4em;
+}
+
+.struct--expanded > .struct__fields {
+    display: inline-block;
+}
+
+.field:not(.field--expanded) .struct__fields {
+    display: none;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+}
+
+.field:not(.field--expanded) {
+    flex-direction: row;
+}
+
+.field:not(.field--expanded) > .field__values::before {
+    content: "=";
+    margin: 0 0.2em;
+}
+
+.field:not(.field--expanded) > .field__values > .field__value + .field__value::before {
+    content: ", ";
+    display: inline;
+}
+
+.field:not(.field--expanded) > .field__values > .field__value {
+    display: inline;
+}
+
+.field:not(.field--expanded) > .field__values > .field__value > .struct > .struct__name {
+	display: inline;
+}
+
+.field__type::before {
+    content: ": "
+}
+
+.field__values {
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+    max-width: 60vw;
+}
+
+.field--expanded .field__values {
+    margin-left: 1em;
+}
+
+.field--expanded > .field__values {
+    display: block;
+}
+
+.field__definition {
+    display: flex;
+}
