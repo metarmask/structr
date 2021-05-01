@@ -2,21 +2,30 @@
 #![feature(never_type)]
 #![feature(try_trait)]
 
-use std::{any::Any, collections::{HashMap, VecDeque}, convert::TryInto, error::Error, fmt::{self, Debug, Display, Formatter}, fs::File, io::Write, marker::PhantomData};
+use std::{
+    any::Any,
+    collections::{HashMap, VecDeque},
+    convert::TryInto,
+    error::Error,
+    fmt::{self, Debug, Display, Formatter},
+    fs::File,
+    io::Write,
+    marker::PhantomData,
+};
+
 use num_traits::ToPrimitive;
 pub use structr_derive::Parse;
 use thiserror::Error;
 
 pub mod prelude {
-    pub use {
-        crate::{Parser, Parse, ParseError, ParseErrorKind},
-        std::iter,
-        std::fmt
-    };
+    pub use std::{fmt, iter};
+
+    pub use crate::{Parse, ParseError, ParseErrorKind, Parser};
 }
 
 pub trait Parse<'p>: Sized + Debug + ToOwned {
-    fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>> where 'p: 'a;
+    fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>>
+    where 'p: 'a;
 }
 
 pub trait ParseValue: Debug {}
@@ -25,7 +34,7 @@ impl<T: Any + Debug> ParseValue for T {}
 
 enum Endianness {
     Little,
-    Big
+    Big,
 }
 
 impl Default for Endianness {
@@ -45,20 +54,20 @@ pub enum ContextEntry {
     StructEnd,
     FieldStart(&'static str, &'static str),
     Value(String),
-    FieldEnd
+    FieldEnd,
 }
 
 pub struct Parser<'p> {
     bytes: &'p [u8],
     pub i: usize,
     endianness: Endianness,
-    pub context: Vec<ContextEntry>
+    pub context: Vec<ContextEntry>,
 }
 
 #[derive(Debug)]
 pub struct ParseError<'p> {
     pub kind: ParseErrorKind,
-    phantom: PhantomData<&'p ()>
+    phantom: PhantomData<&'p ()>,
 }
 
 impl<'p> std::error::Error for ParseError<'p> {}
@@ -84,37 +93,56 @@ pub enum ParseErrorKind {
     #[error("No integer-represented variant for integer {0}")]
     NoReprIntMatch(u64),
     #[error("{:?} did not equal {:?}", 0, 1)]
-    NotEqual(Vec<u8>, Vec<u8>)
+    NotEqual(Vec<u8>, Vec<u8>),
 }
 use ParseErrorKind::MoreBytesNeeded;
 
 impl<'p> Parser<'p> {
     pub fn new(bytes: &'p [u8]) -> Self {
-        Parser { bytes, i: 0, endianness: Default::default(), context: Vec::new() }
+        Parser {
+            bytes,
+            i: 0,
+            endianness: Default::default(),
+            context: Vec::new(),
+        }
     }
 
-    pub fn take<'a, const N: usize>(&'a mut self) -> Result<&'p [u8; N], ParseError<'p>> where 'p: 'a {
-        let bytes = self.bytes.get(self.i..self.i+N).ok_or_else(|| self.error(MoreBytesNeeded(self.i+N - self.bytes.len())))?;
+    pub fn take<'a, const N: usize>(&'a mut self) -> Result<&'p [u8; N], ParseError<'p>>
+    where 'p: 'a {
+        let bytes = self
+            .bytes
+            .get(self.i..self.i + N)
+            .ok_or_else(|| self.error(MoreBytesNeeded(self.i + N - self.bytes.len())))?;
         self.i += N;
         Ok(bytes.try_into().unwrap())
     }
 
-    pub fn take_dynamically<'q>(&'q mut self, n: usize) -> Result<&'p [u8], ParseError<'p>> where 'p: 'q {
-        let bytes = self.bytes.get(self.i..self.i+n).ok_or_else(|| {
-            self.error(MoreBytesNeeded(self.i+n - self.bytes.len()))
-        })?;
+    pub fn take_dynamically<'q>(&'q mut self, n: usize) -> Result<&'p [u8], ParseError<'p>>
+    where 'p: 'q {
+        let bytes = self
+            .bytes
+            .get(self.i..self.i + n)
+            .ok_or_else(|| self.error(MoreBytesNeeded(self.i + n - self.bytes.len())))?;
         self.i += n;
         Ok(bytes)
     }
 
-    pub fn parse<'a, T: Parse<'p>>(&'a mut self) -> Result<T, ParseError<'p>> where 'p: 'a {
+    pub fn parse<'a, T: Parse<'p>>(&'a mut self) -> Result<T, ParseError<'p>>
+    where 'p: 'a {
         T::parse(self)
     }
 
-    pub fn parse_n<'a, N: ToPrimitive, T: Parse<'p>>(&'a mut self, number_of_times: N) -> Result<Vec<T>, ParseError<'p>> where <T as ToOwned>::Owned: Clone, 'p: 'a {
+    pub fn parse_n<'a, N: ToPrimitive, T: Parse<'p>>(
+        &'a mut self,
+        number_of_times: N,
+    ) -> Result<Vec<T>, ParseError<'p>>
+    where
+        <T as ToOwned>::Owned: Clone,
+        'p: 'a,
+    {
         let n = match number_of_times.to_usize() {
             Some(ok) => ok,
-            None => return Err(self.error(ParseErrorKind::UnsignedPointerSizedIntegerTooSmall))
+            None => return Err(self.error(ParseErrorKind::UnsignedPointerSizedIntegerTooSmall)),
         };
         let mut vec = Vec::with_capacity(n);
         for _ in 0..n {
@@ -123,7 +151,14 @@ impl<'p> Parser<'p> {
         Ok(vec)
     }
 
-    pub fn parse_n_then_n_of<'a, N: ToPrimitive + Parse<'p> + Copy, T: Parse<'p>>(&'a mut self) -> Result<Vec<T>, ParseError<'p>> where <N as ToOwned>::Owned: Clone, <T as ToOwned>::Owned: Clone, 'p: 'a {
+    pub fn parse_n_then_n_of<'a, N: ToPrimitive + Parse<'p> + Copy, T: Parse<'p>>(
+        &'a mut self,
+    ) -> Result<Vec<T>, ParseError<'p>>
+    where
+        <N as ToOwned>::Owned: Clone,
+        <T as ToOwned>::Owned: Clone,
+        'p: 'a,
+    {
         let n = self.parse::<N>()?;
         Ok(self.parse_n(n)?)
     }
@@ -155,7 +190,7 @@ impl<'p> Parser<'p> {
     pub fn error(&mut self, kind: ParseErrorKind) -> ParseError<'p> {
         ParseError {
             kind,
-            phantom: PhantomData
+            phantom: PhantomData,
         }
     }
 }
@@ -176,16 +211,20 @@ macro_rules! primitive_parse {
         )*
     };
 }
-primitive_parse!{i8 i16 i32 i64 u8 u16 u32 u64 f32 f64}
+primitive_parse! {i8 i16 i32 i64 u8 u16 u32 u64 f32 f64}
 
 impl<'p> Parse<'p> for bool {
-    fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>> where 'p: 'a {
+    fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>>
+    where 'p: 'a {
         Ok(parser.take::<1>()?[0] == 1)
     }
 }
 
-impl<'p, T: Parse<'p> + Clone, const N: usize> Parse<'p> for [T; N] where T: ToOwned<Owned = T> {
-    fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>> where 'p: 'a {
+impl<'p, T: Parse<'p> + Clone, const N: usize> Parse<'p> for [T; N]
+where T: ToOwned<Owned = T>
+{
+    fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>>
+    where 'p: 'a {
         let mut out = Vec::with_capacity(N);
         for _i in 0..N {
             let what = {
@@ -199,20 +238,21 @@ impl<'p, T: Parse<'p> + Clone, const N: usize> Parse<'p> for [T; N] where T: ToO
 }
 
 impl<'p, const N: usize> Parse<'p> for &'p [u8; N] {
-    fn parse<'a>(parser: &mut Parser<'p>) -> Result<Self, ParseError<'p>> where 'p: 'a {
+    fn parse<'a>(parser: &mut Parser<'p>) -> Result<Self, ParseError<'p>>
+    where 'p: 'a {
         parser.take()
     }
 }
 
 impl<'p> Parse<'p> for &'p str {
-    fn parse<'a>(parser: &mut Parser<'p>) -> Result<Self, ParseError<'p>> where 'p: 'a {
+    fn parse<'a>(parser: &mut Parser<'p>) -> Result<Self, ParseError<'p>>
+    where 'p: 'a {
         let bytes = &parser.bytes[parser.i..];
         let mut offset = 0;
         let offset = loop {
             if bytes[offset] == 0 {
-                break offset
-            // } else if offset > 1000 {
-
+                break offset;
+                // } else if offset > 1000 {
             }
             offset += 1;
         };
@@ -230,7 +270,8 @@ pub fn write_debug_json(context_entries: &[ContextEntry]) -> Result<(), Box<dyn 
     let mut s = String::new();
     let mut path = VecDeque::new();
     let mut struct_path = VecDeque::new();
-    let mut struct_fields = HashMap::<&'static str, (bool, Vec<(&'static str, &'static str)>)>::new();
+    let mut struct_fields =
+        HashMap::<&'static str, (bool, Vec<(&'static str, &'static str)>)>::new();
     s += "{\"data\": [\"\"";
     for entry in context_entries.iter() {
         match entry {
@@ -243,7 +284,10 @@ pub fn write_debug_json(context_entries: &[ContextEntry]) -> Result<(), Box<dyn 
                 path.push_back(name);
             }
             ContextEntry::StructEnd => {
-                struct_fields.get_mut(*struct_path.back().unwrap()).expect("ending field not started").0 = true;
+                struct_fields
+                    .get_mut(*struct_path.back().unwrap())
+                    .expect("ending field not started")
+                    .0 = true;
                 struct_path.pop_back();
                 path.pop_back();
                 s += "]";
@@ -251,7 +295,9 @@ pub fn write_debug_json(context_entries: &[ContextEntry]) -> Result<(), Box<dyn 
             ContextEntry::FieldStart(name, type_) => {
                 s += ", [";
                 s += &index.to_string();
-                let (done, fields) = struct_fields.entry(struct_path.back().unwrap()).or_default();
+                let (done, fields) = struct_fields
+                    .entry(struct_path.back().unwrap())
+                    .or_default();
                 if !*done {
                     fields.push((name, type_));
                 }
@@ -262,28 +308,34 @@ pub fn write_debug_json(context_entries: &[ContextEntry]) -> Result<(), Box<dyn 
                 s += "]";
             }
             ContextEntry::Value(string) => {
-                s += &format!(", {}", serde_json::Value::from(<String as AsRef<str>>::as_ref(string)));
+                s += &format!(
+                    ", {}",
+                    serde_json::Value::from(<String as AsRef<str>>::as_ref(string))
+                );
             }
         }
     }
     for _ in path.into_iter().rev() {
         s += "]";
     }
-    s += &format!("], \"structs\": {}}}", serde_json::to_string(&struct_fields).unwrap());
+    s += &format!(
+        "], \"structs\": {}}}",
+        serde_json::to_string(&struct_fields).unwrap()
+    );
     file.write_all(s.as_bytes())?;
     Ok(())
 }
 
 pub enum PathElement {
     Name(&'static str),
-    Index(usize)
+    Index(usize),
 }
 
 impl Display for PathElement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             PathElement::Index(index) => write!(f, "{}", index),
-            PathElement::Name(name) => write!(f, "{}", name)
+            PathElement::Name(name) => write!(f, "{}", name),
         }
     }
 }
@@ -300,12 +352,16 @@ pub fn get_end_path(context_entries: &[ContextEntry]) -> VecDeque<PathElement> {
                     in_entity_kind_field = false;
                 }
                 match path.back_mut().unwrap() {
-                    PathElement::Index(index) => { *index += 1; },
-                    _ => unreachable!("maybe")
+                    PathElement::Index(index) => {
+                        *index += 1;
+                    }
+                    _ => unreachable!("maybe"),
                 }
                 path.push_back(PathElement::Name(name))
             }
-            ContextEntry::StructEnd => { path.pop_back(); }
+            ContextEntry::StructEnd => {
+                path.pop_back();
+            }
             ContextEntry::FieldStart(name, type_) => {
                 in_entity_kind_field = type_.starts_with("EntityKind");
                 path.push_back(PathElement::Name(name));
@@ -315,14 +371,14 @@ pub fn get_end_path(context_entries: &[ContextEntry]) -> VecDeque<PathElement> {
                 path.pop_back();
                 path.pop_back();
             }
-            ContextEntry::Value(_) => {
-                match path.back_mut().unwrap() {
-                    PathElement::Index(index) => { *index += 1; },
-                    _ => unreachable!("maybe")
+            ContextEntry::Value(_) => match path.back_mut().unwrap() {
+                PathElement::Index(index) => {
+                    *index += 1;
                 }
-            }
+                _ => unreachable!("maybe"),
+            },
             _ => {}
         }
     }
-    return path
+    return path;
 }
