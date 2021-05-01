@@ -89,6 +89,8 @@ pub enum ParseErrorKind {
     NoReprIntMatch(u64),
     #[error("{:?} != {:?}", 0, 1)]
     NotEqual(String, String),
+    #[error("bool byte was {0}")]
+    InvalidBool(u8),
 }
 use ParseErrorKind::MoreBytesNeeded;
 
@@ -218,7 +220,11 @@ primitive_parse! {i8 i16 i32 i64 u8 u16 u32 u64 f32 f64}
 impl<'p> Parse<'p> for bool {
     fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>>
     where 'p: 'a {
-        Ok(parser.take::<1>()?[0] == 1)
+        Ok(match parser.take::<1>()?[0] {
+            0 => false,
+            1 => true,
+            other => return Err(Parser::error(ParseErrorKind::InvalidBool(other))),
+        })
     }
 }
 
