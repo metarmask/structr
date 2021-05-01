@@ -1,12 +1,12 @@
 var structs
 var struct_data_map = new WeakMap()
 
-;(async () => {
-    json = await (await fetch("/teardown/teardown/debug.json")).json();
-    const data_root = json.data[1]
-    structs = json.structs
-    add_struct(data_root, document.body, true)
-})()
+    ; (async () => {
+        json = await (await fetch("/debug.json")).json();
+        const data_root = json.data[1]
+        structs = json.structs
+        add_struct(data_root, document.body, true)
+    })()
 
 function add_struct(data, parent, with_fields) {
     const eStruct = document.createElement("div")
@@ -16,7 +16,7 @@ function add_struct(data, parent, with_fields) {
     eStructName.textContent = data[1]
     eStruct.appendChild(eStructName)
     let def = structs[data[1]][1]
-    if(with_fields) {
+    if (with_fields) {
         add_fields(eStruct, data, def)
     }
     parent.appendChild(eStruct)
@@ -29,7 +29,7 @@ function add_fields(eStruct, data, def) {
     eStructFields.classList.add("struct__fields")
     eStruct.classList.add("struct--expanded")
     const fields = data.slice(2)
-    for(let i = 0; i < fields.length; i++) {
+    for (let i = 0; i < fields.length; i++) {
         const eField = document.createElement("div")
         eField.classList.add("field")
         let field_def = def[i]
@@ -50,12 +50,12 @@ function add_fields(eStruct, data, def) {
         eFieldDef.appendChild(eFieldType)
         eField.appendChild(eFieldDef)
         eField.appendChild(eFieldValues)
-        for(const field_value of field_values) {
+        for (const field_value of field_values) {
             const eFieldValue = document.createElement("div")
             eFieldValue.classList.add("field__value")
-            if(Array.isArray(field_value)) {
-                if(field_value[0] !== "s") {
-                    console.warn("wtf")
+            if (Array.isArray(field_value)) {
+                if (field_value[0] !== "s") {
+                    console.warn("hmm")
                 } else {
                     const field_struct = add_struct(field_value, eFieldValue, false)
                     struct_data_map.set(field_struct, field_value)
@@ -70,7 +70,7 @@ function add_fields(eStruct, data, def) {
 }
 
 function ensure_expanded(struct) {
-    if(struct.classList.contains("struct--expanded") && !struct.querySelector(":scope > .struct__fields")) {
+    if (struct.classList.contains("struct--expanded") && !struct.querySelector(":scope > .struct__fields")) {
         const struct_name = struct.querySelector(".struct__name").textContent
         const def = structs[struct_name][1]
         const data = struct_data_map.get(struct)
@@ -81,24 +81,24 @@ function ensure_expanded(struct) {
 window.addEventListener("click", event => {
     let parent = event.target
     do {
-        if(parent.classList.contains("field")) {
+        if (parent.classList.contains("field")) {
             console.log(parent)
             parent.classList.toggle("field--expanded")
-            if(parent.classList.contains("field--expanded")) {
+            if (parent.classList.contains("field--expanded")) {
                 const child_structs = parent.querySelectorAll(":scope > .field__values > .field__value > .struct")
                 console.log("child_structs: %o", child_structs)
-                if(child_structs.length === 1) {
+                if (child_structs.length === 1) {
                     console.log(child_structs[0])
                     child_structs[0].classList.add("struct--expanded")
                     ensure_expanded(child_structs[0])
                 }
             }
             break
-        } else if(parent.classList.contains("struct")) {
+        } else if (parent.classList.contains("struct")) {
             console.log(parent)
             parent.classList.toggle("struct--expanded")
             ensure_expanded(parent)
             break
         }
-    } while(parent = parent.parentElement)
+    } while (parent = parent.parentElement)
 })
