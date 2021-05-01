@@ -281,7 +281,7 @@ fn derive_field_value(
     if let Some(eq) = &attrs.eq {
         quote!(
             if #ident != #eq {
-                return Err(parser.error(ParseErrorKind::NotEqual(#ident.to_vec(), #eq.to_vec())))
+                return Err(Parser::error(ParseErrorKind::NotEqual(#ident.to_vec(), #eq.to_vec())))
             }
         )
         .to_tokens(&mut stream);
@@ -479,7 +479,7 @@ fn derive_enum(enum_: ItemEnum) -> Result<TokenStream, Error> {
                 fn parse<'q>(parser: &mut Parser<#required_lifetime>) -> Result<Self, ParseError<#required_lifetime>> where #required_lifetime: 'q {
                     Ok(match parser.parse::<#type_>()? {
                         #(#variant_parse)*
-                        other => return Err(parser.error(ParseErrorKind::NoReprIntMatch(other.try_into().unwrap())))
+                        other => return Err(Parser::error(ParseErrorKind::NoReprIntMatch(other.try_into().unwrap())))
                     })
                 }
             }

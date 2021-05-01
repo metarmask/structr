@@ -3,7 +3,6 @@
 #![feature(try_trait)]
 
 use std::{
-    any::Any,
     collections::{HashMap, VecDeque},
     convert::TryInto,
     error::Error,
@@ -28,7 +27,7 @@ pub trait Parse<'p>: Sized + Debug + ToOwned {
     where 'p: 'a;
 }
 
-enum Endianness {
+pub enum Endianness {
     Little,
     Big,
 }
@@ -56,7 +55,7 @@ pub enum ContextEntry {
 pub struct Parser<'p> {
     bytes: &'p [u8],
     pub i: usize,
-    endianness: Endianness,
+    pub endianness: Endianness,
     pub context: Vec<ContextEntry>,
 }
 
