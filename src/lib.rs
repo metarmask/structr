@@ -28,10 +28,6 @@ pub trait Parse<'p>: Sized + Debug + ToOwned {
     where 'p: 'a;
 }
 
-pub trait ParseValue: Debug {}
-
-impl<T: Any + Debug> ParseValue for T {}
-
 enum Endianness {
     Little,
     Big,
