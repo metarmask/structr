@@ -279,7 +279,7 @@ fn derive_field_value(
     if let Some(eq) = &attrs.eq {
         quote!(
             if #ident != #eq {
-                return Err(Parser::error(ParseErrorKind::NotEqual(#ident.to_vec(), #eq.to_vec())))
+                return Err(Parser::error(ParseErrorKind::NotEqual(format!("{:?}", #ident), format!("{:?}", #eq))))
             }
         )
         .to_tokens(&mut stream);

@@ -87,8 +87,8 @@ pub enum ParseErrorKind {
     UnsignedPointerSizedIntegerTooSmall,
     #[error("No integer-represented variant for integer {0}")]
     NoReprIntMatch(u64),
-    #[error("{:?} did not equal {:?}", 0, 1)]
-    NotEqual(Vec<u8>, Vec<u8>),
+    #[error("{:?} != {:?}", 0, 1)]
+    NotEqual(String, String),
 }
 use ParseErrorKind::MoreBytesNeeded;
 
