@@ -98,6 +98,7 @@ pub enum ParseErrorKind {
 use ParseErrorKind::MoreBytesNeeded;
 
 impl<'p> Parser<'p> {
+    #[must_use]
     pub fn new(bytes: &'p [u8]) -> Self {
         Parser {
             bytes,
@@ -107,12 +108,13 @@ impl<'p> Parser<'p> {
         }
     }
 
+    #[allow(clippy::missing_panics_doc)]
     pub fn take<'a, const N: usize>(&'a mut self) -> Result<&'p [u8; N], ParseError<'p>>
     where 'p: 'a {
         let bytes = self
             .bytes
             .get(self.i..self.i + N)
-            .ok_or_else(|| self.error(MoreBytesNeeded(self.i + N - self.bytes.len())))?;
+            .ok_or_else(|| Parser::error(MoreBytesNeeded(self.i + N - self.bytes.len())))?;
         self.i += N;
         Ok(bytes.try_into().unwrap())
     }
@@ -122,7 +124,7 @@ impl<'p> Parser<'p> {
         let bytes = self
             .bytes
             .get(self.i..self.i + n)
-            .ok_or_else(|| self.error(MoreBytesNeeded(self.i + n - self.bytes.len())))?;
+            .ok_or_else(|| Parser::error(MoreBytesNeeded(self.i + n - self.bytes.len())))?;
         self.i += n;
         Ok(bytes)
     }
@@ -132,7 +134,7 @@ impl<'p> Parser<'p> {
         T::parse(self)
     }
 
-    pub fn parse_n<'a, N: ToPrimitive, T: Parse<'p>>(
+    pub fn parse_n<'a, N: ToPrimitive + Copy, T: Parse<'p>>(
         &'a mut self,
         number_of_times: N,
     ) -> Result<Vec<T>, ParseError<'p>>
@@ -142,7 +144,11 @@ impl<'p> Parser<'p> {
     {
         let n = match number_of_times.to_usize() {
             Some(ok) => ok,
-            None => return Err(self.error(ParseErrorKind::UnsignedPointerSizedIntegerTooSmall)),
+            None => {
+                return Err(Parser::error(
+                    ParseErrorKind::UnsignedPointerSizedIntegerTooSmall,
+                ))
+            }
         };
         let mut vec = Vec::with_capacity(n);
         for _ in 0..n {
@@ -160,7 +166,7 @@ impl<'p> Parser<'p> {
         'p: 'a,
     {
         let n = self.parse::<N>()?;
-        Ok(self.parse_n(n)?)
+        self.parse_n(n)
     }
 
     pub fn ctx_index(&mut self) {
@@ -187,7 +193,8 @@ impl<'p> Parser<'p> {
         self.context.push(ContextEntry::StructEnd);
     }
 
-    pub fn error(&mut self, kind: ParseErrorKind) -> ParseError<'p> {
+    #[must_use]
+    pub fn error(kind: ParseErrorKind) -> ParseError<'p> {
         ParseError {
             kind,
             phantom: PhantomData,
@@ -257,13 +264,16 @@ impl<'p> Parse<'p> for &'p str {
             offset += 1;
         };
         let string: &str = std::str::from_utf8(&bytes[..offset])
-            .map_err(|_| parser.error(ParseErrorKind::NotUTF8))?;
+            .map_err(|_| Parser::error(ParseErrorKind::NotUTF8))?;
         parser.i += offset + 1;
         parser.ctx_value(string.to_string());
         Ok(string)
     }
 }
 
+/// # Panics
+/// If the context entries are invalid, like if a struct is ended before one
+/// starts.
 pub fn write_debug_json(context_entries: &[ContextEntry]) -> Result<(), Box<dyn Error>> {
     let mut index = 0;
     let mut file = File::create("debug.json")?;
@@ -340,6 +350,9 @@ impl Display for PathElement {
     }
 }
 
+/// # Panics
+/// If more structs and fields are ended than started
+#[must_use]
 pub fn get_end_path(context_entries: &[ContextEntry]) -> VecDeque<PathElement> {
     let mut path = VecDeque::new();
     path.push_back(PathElement::Index(0));
@@ -355,7 +368,7 @@ pub fn get_end_path(context_entries: &[ContextEntry]) -> VecDeque<PathElement> {
                     PathElement::Index(index) => {
                         *index += 1;
                     }
-                    _ => unreachable!("maybe"),
+                    PathElement::Name(_) => unreachable!("maybe"),
                 }
                 path.push_back(PathElement::Name(name))
             }
@@ -375,10 +388,10 @@ pub fn get_end_path(context_entries: &[ContextEntry]) -> VecDeque<PathElement> {
                 PathElement::Index(index) => {
                     *index += 1;
                 }
-                _ => unreachable!("maybe"),
+                PathElement::Name(_) => unreachable!("maybe"),
             },
-            _ => {}
+            ContextEntry::Index(_) => {}
         }
     }
-    return path;
+    path
 }

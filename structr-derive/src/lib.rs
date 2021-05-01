@@ -30,7 +30,6 @@ struct FieldAttributeSpec {
     with: Option<Type>,
     run: Option<Stmt>,
     parse: Option<Expr>,
-    hidden: Option<Field>,
     len: Option<Type>,
     eq: Option<Expr>,
 }
@@ -91,26 +90,23 @@ impl FieldAttributeSpec {
                         "Unexpected name to be path in structr(name = value)",
                     )
                 })?;
-                let get_str_lit =
-                    || match &name_value.lit {
-                        syn::Lit::Str(str) => Ok(str),
-                        _ => return Err(Error::new(
+                let get_str_lit = || match &name_value.lit {
+                    syn::Lit::Str(str) => Ok(str),
+                    _ => {
+                        return Err(Error::new(
                             ident.span(),
                             format!(
                                 "Expected structr \"{}\" attribute to have string literal as value",
                                 ident.to_string()
                             ),
-                        )),
-                    };
+                        ))
+                    }
+                };
                 match ident.to_string().as_ref() {
                     "with" => field_structr_attrs.with = Some(get_str_lit()?.parse()?),
                     "run" => field_structr_attrs.run = Some(get_str_lit()?.parse()?),
                     "len" => field_structr_attrs.len = Some(get_str_lit()?.parse()?),
                     "eq" => field_structr_attrs.eq = Some(get_str_lit()?.parse()?),
-                    "hidden" => {
-                        field_structr_attrs.hidden =
-                            Some(get_str_lit()?.parse_with(Field::parse_named)?)
-                    }
                     "parse" => {
                         // let mut value: ExprCall = ;
                         // value.args.insert(0, parse_quote!{ parser });
