@@ -108,8 +108,6 @@ impl FieldAttributeSpec {
                     "len" => field_structr_attrs.len = Some(get_str_lit()?.parse()?),
                     "eq" => field_structr_attrs.eq = Some(get_str_lit()?.parse()?),
                     "parse" => {
-                        // let mut value: ExprCall = ;
-                        // value.args.insert(0, parse_quote!{ parser });
                         field_structr_attrs.parse = Some(get_str_lit()?.parse()?);
                     }
                     other => {
@@ -313,7 +311,6 @@ fn derive_field_assignment(
                 #ident
             }
         } else {
-            // let field_index = syn::Index::from(*field_index);
             quote_spanned! {field.span()=>
                 #some_ident
             }
@@ -457,7 +454,6 @@ fn derive_enum(enum_: ItemEnum) -> Result<TokenStream, Error> {
         let variant_parse = expr_variant_map
             .iter()
             .map(|(expr, ident)| {
-                // let field = variant.fields.iter().next().unwrap();
                 quote_spanned! {ident.span()=>
                     #expr => Self::#ident,
                 }
@@ -493,7 +489,6 @@ fn derive_enum(enum_: ItemEnum) -> Result<TokenStream, Error> {
             .variants
             .iter()
             .map(|variant| {
-                // let field = variant.fields.iter().next().unwrap();
                 let ident = &variant.ident;
                 quote_spanned! {ident.span()=>
                     #variants_only_ident::#ident => Self::#ident(parser.parse()?)

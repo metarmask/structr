@@ -254,7 +254,6 @@ impl<'p> Parse<'p> for &'p str {
         let offset = loop {
             if bytes[offset] == 0 {
                 break offset;
-                // } else if offset > 1000 {
             }
             offset += 1;
         };
