@@ -1,6 +1,4 @@
-#![feature(associated_type_defaults)]
-#![feature(never_type)]
-#![feature(try_trait)]
+#![feature(associated_type_defaults, never_type)]
 
 use std::{
     collections::{HashMap, VecDeque},
