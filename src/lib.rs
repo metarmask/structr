@@ -1,5 +1,4 @@
-#![feature(associated_type_defaults)]
-#![feature(never_type)]
+#![feature(associated_type_defaults, never_type)]
 
 use std::{
     collections::{HashMap, VecDeque, TryReserveError},
