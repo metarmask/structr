@@ -1,9 +1,8 @@
 #![feature(associated_type_defaults)]
 #![feature(never_type)]
-#![feature(try_trait)]
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, VecDeque, TryReserveError},
     convert::TryInto,
     error::Error,
     fmt::{self, Debug, Display, Formatter},
@@ -91,6 +90,8 @@ pub enum ParseErrorKind {
     NotEqual(String, String),
     #[error("bool byte was {0}")]
     InvalidBool(u8),
+    #[error("failed to reserve space in memory: {:?}", 0)]
+    TryReserve(#[from] TryReserveError),
 }
 use ParseErrorKind::MoreBytesNeeded;
 
@@ -147,7 +148,7 @@ impl<'p> Parser<'p> {
                 ))
             }
         };
-        let mut vec = Vec::with_capacity(n);
+        let mut vec = try_vec_with_capacity(n)?;
         for _ in 0..n {
             vec.push(T::parse(self)?);
         }
@@ -228,12 +229,18 @@ impl<'p> Parse<'p> for bool {
     }
 }
 
+fn try_vec_with_capacity<'p, T>(size: usize) -> Result<Vec<T>, ParseError<'p>> {
+    let mut vec = Vec::new();
+    vec.try_reserve_exact(size).map_err(|err| Parser::error(err.into()))?;
+    Ok(vec)
+}
+
 impl<'p, T: Parse<'p> + Clone, const N: usize> Parse<'p> for [T; N]
 where T: ToOwned<Owned = T>
 {
     fn parse<'a>(parser: &'a mut Parser<'p>) -> Result<Self, ParseError<'p>>
     where 'p: 'a {
-        let mut out = Vec::with_capacity(N);
+        let mut out = try_vec_with_capacity(N)?;
         for _i in 0..N {
             let what = {
                 let value = T::parse(parser)?.to_owned();
